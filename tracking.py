@@ -43,10 +43,10 @@ class KalmanBoxTracker():
         self.kf.H = np.array(
             [[1, 0, 0, 0], [0, 1, 0, 0]])
 
-        self.kf.R *= 10.
+        self.kf.R *= 2.
         self.kf.P *= 10.
         self.kf.P[2:, 2:] *= 100.  # give high uncertainty to the unobservable initial velocities
-        self.kf.Q *= 0.01
+        self.kf.Q *= 0.1
 
         self.kf.x[:2] = contours_to_z(cont)
         self.time_since_update = 0
@@ -91,10 +91,10 @@ class KalmanBoxTracker():
         """
         return self.kf.x
 
-class Sort(object):
+class Associator(object):
     def __init__(self, max_age=1, min_hits=3):
         """
-        Sets key parameters for SORT
+        Sets key parameters for Associator
         """
         self.max_age = max_age
         self.min_hits = min_hits
@@ -105,10 +105,7 @@ class Sort(object):
     def update(self, dets):
         """
         Params:
-          dets - a numpy array of detections in the format [[x1,y1,x2,y2,score],[x1,y1,x2,y2,score],...]
-        Requires: this method must be called once for each frame even with empty detections.
-        Returns the a similar array, where the last column is the object ID.
-        NOTE: The number of objects returned may differ from the number of detections provided.
+          dets - List of output of cv2.findcontours() function. 
         """
         self.frame_count += 1
         # get predicted locations from existing trackers.

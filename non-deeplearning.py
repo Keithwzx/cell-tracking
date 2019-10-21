@@ -44,7 +44,7 @@ try:
 except:
     pass
 valid_images = [".png"]
-sort_algorithm = Sort()
+sort_algorithm = Associator()
 debug_tracks = []
 for f in os.listdir(png_path):
     ext = os.path.splitext(f)[1]
