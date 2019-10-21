@@ -69,6 +69,7 @@ class KalmanBoxTracker():
         self.hits += 1
         self.hit_streak += 1
         self.kf.update(contours_to_z(cont))
+        self.cont = cont
 
     def predict(self):
         """
@@ -185,6 +186,6 @@ class Sort(object):
             updated_tracks = ret[:, 2].astype(np.int)
             for id in updated_tracks:
                 cv2.drawContours(image, self.trackers_dict[id].cont, -1, self.trackers_dict[id].display_color, 3)
-                cv2.putText(image, str(self.trackers_dict[id].id), (self.trackers_dict[id].kf.x[0], self.trackers_dict[id].kf.x[1]), cv2.FONT_HERSHEY_TRIPLEX, 0.5, color=(255,255,255),thickness=1)
+                cv2.putText(image, str(self.trackers_dict[id].id), (self.trackers_dict[id].kf.x[0]-3, self.trackers_dict[id].kf.x[1]-3), cv2.FONT_HERSHEY_SIMPLEX, 0.7, color=(255,255,255),thickness=3)
 
         return image

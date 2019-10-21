@@ -46,13 +46,12 @@ except:
 valid_images = [".png"]
 sort_algorithm = Sort()
 debug_tracks = []
-for f in os.listdir(png_path)[:3]:
+for f in os.listdir(png_path):
     ext = os.path.splitext(f)[1]
     if ext.lower() not in valid_images:
         continue
     img = cv2.imread(os.path.join(png_path,f))
     dets = detector(img)
-    # debug_tracks.append(sort_algorithm.update(dets))
     drawed_img = sort_algorithm.display_trackers(img,sort_algorithm.update(dets))
     cv2.imwrite(os.path.join(png_path,"tracked",f"{f}"),drawed_img)
 
