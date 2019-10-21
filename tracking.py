@@ -5,6 +5,7 @@ import cv2
 import random
 
 
+
 def iou_contours(contour1,contour2):
     """
     :param contour1: Output of cv2.findcontours() function
@@ -56,11 +57,12 @@ class KalmanBoxTracker():
         self.hit_streak = 0
         self.age = 0
         self.cont = cont
-        self.display_color = list(np.random.choice(range(256), size=3)) #for displaying
+        color = np.uint8(np.random.uniform(100, 255, 3))
+        self.display_color = tuple(map(int, color)) #for displaying
 
     def update(self, cont):
         """
-        Updates the state vector with observed bbox.
+        Updates the state vector with observed contour.
         """
         self.time_since_update = 0
         self.history = []
@@ -84,7 +86,7 @@ class KalmanBoxTracker():
 
     def get_state(self):
         """
-        Returns the current bounding box estimate.
+        Returns the current mean estimate
         """
         return self.kf.x
 
@@ -109,17 +111,7 @@ class Sort(object):
         """
         self.frame_count += 1
         # get predicted locations from existing trackers.
-        # trks = np.zeros((len(self.trackers),2))
-        # to_del = []
         ret = []
-        # for t, trk in enumerate(trks):
-        #     pos = self.trackers[t].predict()
-        #     trk[:] = [pos[0], pos[1]]
-        #     if (np.any(np.isnan(pos))):
-        #         to_del.append(t)
-        # trks = np.ma.compress_rows(np.ma.masked_invalid(trks))
-        # for t in reversed(to_del):
-        #     self.trackers.pop(t)
         matched, unmatched_dets, unmatched_trks = self.associate_detections_to_trackers(dets)
 
         # update matched trackers with assigned detections
@@ -192,5 +184,7 @@ class Sort(object):
         if len(self.trackers) > 0:
             updated_tracks = ret[:, 2].astype(np.int)
             for id in updated_tracks:
-                cv2.drawContours(image, self.trackers_dict[id].cont, -1, (255,255,255), 3)
+                cv2.drawContours(image, self.trackers_dict[id].cont, -1, self.trackers_dict[id].display_color, 3)
+                cv2.putText(image, str(self.trackers_dict[id].id), (self.trackers_dict[id].kf.x[0], self.trackers_dict[id].kf.x[1]), cv2.FONT_HERSHEY_TRIPLEX, 0.5, color=(255,255,255),thickness=1)
+
         return image

@@ -6,7 +6,8 @@ import numpy as np
 from sklearn.cluster import DBSCAN
 import pandas as pd
 from tracking import *
-
+import warnings
+warnings.filterwarnings("ignore")
 
 
 def detector(image):
