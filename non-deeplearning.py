@@ -25,10 +25,12 @@ def detector(image):
         """
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         th3 = cv2.adaptiveThreshold(gray, 1, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-                                    cv2.THRESH_BINARY_INV, 51, 6)
+                                    cv2.THRESH_BINARY_INV, 31,5)
         kernel = np.ones((8, 8), np.uint8)
         closing = cv2.morphologyEx(th3, cv2.MORPH_CLOSE, kernel)
-        contours, hierarchy = cv2.findContours(closing,  cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        img_erosion = cv2.erode(closing, np.ones((3, 3), np.uint8), iterations=1)
+        plt.imshow(img_erosion)
+        contours, hierarchy = cv2.findContours(img_erosion,  cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         selected_contours = []
         for contour in contours:
             if len(contour) > 50:
@@ -53,8 +55,15 @@ for f in os.listdir(png_path):
     img = cv2.imread(os.path.join(png_path,f))
     dets = detector(img)
     drawed_img = sort_algorithm.display_trackers(img,sort_algorithm.update(dets))
-    cv2.imwrite(os.path.join(png_path,"tracked",f"{f}"),drawed_img)
+    cv2.imwrite(os.path.join(r"C:\Users\mete\Documents\Github-Rep\medical-tracking\tracking_results",f"{f}"),drawed_img)
 
+
+trackers = sort_algorithm.trackers
+#Sorunlu id=2
+temp_tracker = trackers[2]
+measurements = temp_tracker.measurements
+tracking_results = np.array(temp_tracker.trajectory)
+plt.plot(tracking_results[:,0],tracking_results[:,1])
 
 
 

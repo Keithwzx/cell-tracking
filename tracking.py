@@ -1,23 +1,59 @@
 from sklearn.utils.linear_assignment_ import linear_assignment
 from filterpy.kalman import KalmanFilter
+from filterpy.common import Q_discrete_white_noise
+
 import numpy as np
 import cv2
+from matplotlib import pyplot as plt
 import random
 
 
 
+
+
 def iou_contours(contour1,contour2):
-    """
-    :param contour1: Output of cv2.findcontours() function
-    :param contour2: Output of cv2.findcontours() function
-    :return: iou overlap between two contour
-    """
-    blank = np.zeros((1024, 1024))
-    img1 = cv2.fillPoly(blank.copy(), pts=[contour1], color= 1)
-    img2 = cv2.fillPoly(blank.copy(), pts=[contour2], color= 1)
-    intersection = len(np.nonzero(cv2.bitwise_and(img2, img1))[0])
-    union = len(np.nonzero(cv2.bitwise_or(img2, img1))[0])
-    return intersection/union
+    '''
+        :param contour1: Output of cv2.findcontours() function
+        :param contour2: Output of cv2.findcontours() function
+        :return: IOU with rectangular assumption. It is to reduce computational power when two contours is far away.
+        Also,
+        Parameters
+        ----------
+        bb1 : dict
+            Keys: {'x1', 'x2', 'y1', 'y2'}
+            The (x1, y1) position is at the top left corner,
+            the (x2, y2) position is at the bottom right corner
+        bb2 : dict
+            Keys: {'x1', 'x2', 'y1', 'y2'}
+            The (x, y) position is at the top left corner,
+            the (x2, y2) position is at the bottom right corner
+        '''
+    bb1 = {}
+    bb2 = {}
+    bb1["x1"] = np.min(contour1[:, 0], axis=0)[0]
+    bb1["y1"] = np.min(contour1[:, 0], axis=0)[1]
+    bb1["x2"] = np.max(contour1[:, 0], axis=0)[0]
+    bb1["y2"] = np.max(contour1[:, 0], axis=0)[1]
+    bb2["x1"] = np.min(contour2[:, 0], axis=0)[0]
+    bb2["y1"] = np.min(contour2[:, 0], axis=0)[1]
+    bb2["x2"] = np.max(contour2[:, 0], axis=0)[0]
+    bb2["y2"] = np.max(contour2[:, 0], axis=0)[1]
+    x_left = max(bb1['x1'], bb2['x1'])
+    y_top = max(bb1['y1'], bb2['y1'])
+    x_right = min(bb1['x2'], bb2['x2'])
+    y_bottom = min(bb1['y2'], bb2['y2'])
+
+    if x_right < x_left or y_bottom < y_top:
+        return 0.0
+    else:
+        blank = np.zeros((1024, 1024))
+        img1 = cv2.fillConvexPoly(blank.copy(), contour1, color=1)
+        img2 = cv2.fillConvexPoly(blank.copy(), contour2, color=1)
+        # plt.imshow(img2)
+        intersection = len(np.nonzero(cv2.bitwise_and(img2, img1))[0])
+        union = len(np.nonzero(cv2.bitwise_or(img2, img1))[0])
+        return intersection / union
+
 
 def contours_to_z(contour):
     """
@@ -43,12 +79,13 @@ class KalmanBoxTracker():
         self.kf.H = np.array(
             [[1, 0, 0, 0], [0, 1, 0, 0]])
 
-        self.kf.R *= 2.
-        self.kf.P *= 10.
+        self.kf.R *= 1.
+        self.kf.P *= 20.
         self.kf.P[2:, 2:] *= 100.  # give high uncertainty to the unobservable initial velocities
-        self.kf.Q *= 0.1
+        self.kf.Q = Q_discrete_white_noise(4, 1, 10000)
 
         self.kf.x[:2] = contours_to_z(cont)
+        self.kf.x[2:] = 5
         self.time_since_update = 0
         self.id = KalmanBoxTracker.count
         KalmanBoxTracker.count += 1
@@ -59,6 +96,8 @@ class KalmanBoxTracker():
         self.cont = cont
         color = np.uint8(np.random.uniform(100, 255, 3))
         self.display_color = tuple(map(int, color)) #for displaying
+        self.trajectory = []
+        self.measurements = []
 
     def update(self, cont):
         """
@@ -68,15 +107,19 @@ class KalmanBoxTracker():
         self.history = []
         self.hits += 1
         self.hit_streak += 1
-        self.kf.update(contours_to_z(cont))
+        z = contours_to_z(cont)
+        self.kf.update(z)
         self.cont = cont
+        self.trajectory.append(self.kf.x)
+        self.measurements.append(z)
 
     def predict(self):
         """
         Advances the state vector and returns the predicted state
         """
-        if ((self.kf.x[1] + self.kf.x[3]) <= 0):
-            self.kf.x[3] *= 0.0
+        # if ((self.kf.x[1] + self.kf.x[3]) <= 0):
+        #     self.kf.x[3] *= 0.0
+        print("sa")
         self.kf.predict()
         self.age += 1
         if (self.time_since_update > 0):
@@ -92,7 +135,7 @@ class KalmanBoxTracker():
         return self.kf.x
 
 class Associator(object):
-    def __init__(self, max_age=1, min_hits=3):
+    def __init__(self, max_age=3, min_hits=3):
         """
         Sets key parameters for Associator
         """
@@ -102,10 +145,11 @@ class Associator(object):
         self.frame_count = 0
         self.trackers_dict = {}
 
+
     def update(self, dets):
         """
         Params:
-          dets - List of output of cv2.findcontours() function. 
+          dets - List of output of cv2.findcontours() function.
         """
         self.frame_count += 1
         # get predicted locations from existing trackers.
@@ -116,7 +160,8 @@ class Associator(object):
         for t, trk in enumerate(self.trackers):
             if (t not in unmatched_trks):
                 d = matched[np.where(matched[:, 1] == t)[0], 0]
-                print(d[0])
+                # print(d[0])
+                trk.predict()
                 trk.update(dets[d[0]])
                 self.trackers_dict[trk.id] = trk
 
@@ -184,5 +229,4 @@ class Associator(object):
             for id in updated_tracks:
                 cv2.drawContours(image, self.trackers_dict[id].cont, -1, self.trackers_dict[id].display_color, 3)
                 cv2.putText(image, str(self.trackers_dict[id].id), (self.trackers_dict[id].kf.x[0]-3, self.trackers_dict[id].kf.x[1]-3), cv2.FONT_HERSHEY_SIMPLEX, 0.7, color=(255,255,255),thickness=3)
-
         return image

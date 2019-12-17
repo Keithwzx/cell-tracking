@@ -6,12 +6,6 @@ import numpy as np
 
 path = r"C:\Users\mete\Documents\Github-Rep\medical-tracking\data\Fluo-N2DH-GOWT1\01"
 png_path = r"C:\Users\mete\Documents\Github-Rep\medical-tracking\data\png"
-# valid_images = [".tif"]
-# for f in os.listdir(path):
-#     ext = os.path.splitext(f)[1]
-#     if ext.lower() not in valid_images:
-#         continue
-#     img = Image.open(os.path.join(path,f)).save(png_path + "/" + f.split(".")[0]+".png")
 
 imgs = []
 valid_images = [".png"]
